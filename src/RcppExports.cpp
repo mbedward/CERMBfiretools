@@ -6,69 +6,41 @@
 
 using namespace Rcpp;
 
-// find_row
-int find_row(IntegerMatrix x, int col_index, int value);
-RcppExport SEXP _CERMBfiretools_find_row(SEXP xSEXP, SEXP col_indexSEXP, SEXP valueSEXP) {
+// do_cell_fire_status
+arma::ivec do_cell_fire_status(const arma::ivec& fireyears, const int min_threshold, const int max_threshold, const arma::ivec& query_years, const int base_year, const bool quiet);
+RcppExport SEXP _CERMBfiretools_do_cell_fire_status(SEXP fireyearsSEXP, SEXP min_thresholdSEXP, SEXP max_thresholdSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type col_index(col_indexSEXP);
-    Rcpp::traits::input_parameter< int >::type value(valueSEXP);
-    rcpp_result_gen = Rcpp::wrap(find_row(x, col_index, value));
-    return rcpp_result_gen;
-END_RCPP
-}
-// mat_subset
-IntegerMatrix mat_subset(IntegerMatrix x, int col_index, int value);
-RcppExport SEXP _CERMBfiretools_mat_subset(SEXP xSEXP, SEXP col_indexSEXP, SEXP valueSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type col_index(col_indexSEXP);
-    Rcpp::traits::input_parameter< int >::type value(valueSEXP);
-    rcpp_result_gen = Rcpp::wrap(mat_subset(x, col_index, value));
-    return rcpp_result_gen;
-END_RCPP
-}
-// cell_fire_status
-int cell_fire_status(IntegerVector fireyears, int min_threshold, int max_threshold, int year_query, int year_base, bool quiet);
-RcppExport SEXP _CERMBfiretools_cell_fire_status(SEXP fireyearsSEXP, SEXP min_thresholdSEXP, SEXP max_thresholdSEXP, SEXP year_querySEXP, SEXP year_baseSEXP, SEXP quietSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerVector >::type fireyears(fireyearsSEXP);
-    Rcpp::traits::input_parameter< int >::type min_threshold(min_thresholdSEXP);
-    Rcpp::traits::input_parameter< int >::type max_threshold(max_thresholdSEXP);
-    Rcpp::traits::input_parameter< int >::type year_query(year_querySEXP);
-    Rcpp::traits::input_parameter< int >::type year_base(year_baseSEXP);
-    Rcpp::traits::input_parameter< bool >::type quiet(quietSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_fire_status(fireyears, min_threshold, max_threshold, year_query, year_base, quiet));
+    Rcpp::traits::input_parameter< const arma::ivec& >::type fireyears(fireyearsSEXP);
+    Rcpp::traits::input_parameter< const int >::type min_threshold(min_thresholdSEXP);
+    Rcpp::traits::input_parameter< const int >::type max_threshold(max_thresholdSEXP);
+    Rcpp::traits::input_parameter< const arma::ivec& >::type query_years(query_yearsSEXP);
+    Rcpp::traits::input_parameter< const int >::type base_year(base_yearSEXP);
+    Rcpp::traits::input_parameter< const bool >::type quiet(quietSEXP);
+    rcpp_result_gen = Rcpp::wrap(do_cell_fire_status(fireyears, min_threshold, max_threshold, query_years, base_year, quiet));
     return rcpp_result_gen;
 END_RCPP
 }
 // table_fire_status
-IntegerMatrix table_fire_status(IntegerMatrix cell_firehistory, IntegerMatrix cell_veg, IntegerMatrix veg_thresholds, int year_query, int year_base, bool quiet);
-RcppExport SEXP _CERMBfiretools_table_fire_status(SEXP cell_firehistorySEXP, SEXP cell_vegSEXP, SEXP veg_thresholdsSEXP, SEXP year_querySEXP, SEXP year_baseSEXP, SEXP quietSEXP) {
+arma::imat table_fire_status(arma::imat firehistory, arma::imat veg, arma::imat veg_thresholds, arma::ivec query_years, int base_year, bool quiet);
+RcppExport SEXP _CERMBfiretools_table_fire_status(SEXP firehistorySEXP, SEXP vegSEXP, SEXP veg_thresholdsSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerMatrix >::type cell_firehistory(cell_firehistorySEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type cell_veg(cell_vegSEXP);
-    Rcpp::traits::input_parameter< IntegerMatrix >::type veg_thresholds(veg_thresholdsSEXP);
-    Rcpp::traits::input_parameter< int >::type year_query(year_querySEXP);
-    Rcpp::traits::input_parameter< int >::type year_base(year_baseSEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type firehistory(firehistorySEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type veg(vegSEXP);
+    Rcpp::traits::input_parameter< arma::imat >::type veg_thresholds(veg_thresholdsSEXP);
+    Rcpp::traits::input_parameter< arma::ivec >::type query_years(query_yearsSEXP);
+    Rcpp::traits::input_parameter< int >::type base_year(base_yearSEXP);
     Rcpp::traits::input_parameter< bool >::type quiet(quietSEXP);
-    rcpp_result_gen = Rcpp::wrap(table_fire_status(cell_firehistory, cell_veg, veg_thresholds, year_query, year_base, quiet));
+    rcpp_result_gen = Rcpp::wrap(table_fire_status(firehistory, veg, veg_thresholds, query_years, base_year, quiet));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_CERMBfiretools_find_row", (DL_FUNC) &_CERMBfiretools_find_row, 3},
-    {"_CERMBfiretools_mat_subset", (DL_FUNC) &_CERMBfiretools_mat_subset, 3},
-    {"_CERMBfiretools_cell_fire_status", (DL_FUNC) &_CERMBfiretools_cell_fire_status, 6},
+    {"_CERMBfiretools_do_cell_fire_status", (DL_FUNC) &_CERMBfiretools_do_cell_fire_status, 6},
     {"_CERMBfiretools_table_fire_status", (DL_FUNC) &_CERMBfiretools_table_fire_status, 6},
     {NULL, NULL, 0}
 };
