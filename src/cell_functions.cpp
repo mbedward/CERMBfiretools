@@ -39,12 +39,12 @@ enum class FireStatus {
 // @return A vector giving fire status at each query year.
 //
 // [[Rcpp::export]]
-arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
-                               const int min_threshold,
-                               const int max_threshold,
-                               const arma::ivec& query_years,
-                               const int base_year,
-                               const bool quiet = true) {
+arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
+                                  const int min_threshold,
+                                  const int max_threshold,
+                                  const arma::ivec& query_years,
+                                  const int base_year,
+                                  const bool quiet = true) {
 
   enum class IntervalStatus {
     UNDEFINED = -1,
@@ -53,7 +53,7 @@ arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
     TooFrequent = 3
   };
 
-  arma::ivec rtn_status(query_years.n_elem, arma::fill::zeros);
+  arma::irowvec rtn_status(query_years.n_elem, arma::fill::zeros);
 
   for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
     int the_year = query_years(iyear);
