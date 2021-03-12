@@ -23,28 +23,34 @@ enum class FireStatus {
 // raster cell) given a vector of fire years, and the minimum and maximum
 // tolerable fire intervals (years) for the vegetation at the location.
 //
-// @param fireyears Vector of integer fire years. Any years beyond year_query
-//   are ignored, as are duplicate years.
+// @param fireyears Vector of integer fire years. Any years beyond the
+//   current query year are ignored, as are duplicate years.
 //
 // @param min_threshold Minimum tolerable fire interval (years).
 //
 // @param max_threshold Maximum tolerable fire interval (years).
 //
-// @param year_query Reference year for the analysis.
+// @param query_years One or more reference years for which to report
+//   fire status.
 //
-// @param year_base Year taken as the start of the data period.
+// @param base_year Default start year of the data period. If no fires have
+//   occurred, a time since fire value for the query year is set by
+//   assuming that a fire occurred N years before the base_year, where
+//   N is the mid-point of the vegetation's tolerable fire interval. If
+//   fires have occurred, but only after the base year, then we assume
+//   an earlier fire based on the same mid-point calculation.
 //
 // @param quiet If true (default) do not print debugging output.
 //
 // @return A vector giving fire status at each query year.
 //
 // [[Rcpp::export]]
-arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
-                               const int min_threshold,
-                               const int max_threshold,
-                               const arma::ivec& query_years,
-                               const int base_year,
-                               const bool quiet = true) {
+arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
+                                  const int min_threshold,
+                                  const int max_threshold,
+                                  const arma::ivec& query_years,
+                                  const int base_year,
+                                  const bool quiet = true) {
 
   enum class IntervalStatus {
     UNDEFINED = -1,
@@ -53,7 +59,7 @@ arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
     TooFrequent = 3
   };
 
-  arma::ivec rtn_status(query_years.n_elem, arma::fill::zeros);
+  arma::irowvec rtn_status(query_years.n_elem, arma::fill::zeros);
 
   for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
     int the_year = query_years(iyear);
@@ -63,10 +69,13 @@ arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
 
     // Vector for query fireyears - allow space for an additional
     // year that might be added (below) before the base year
-    arma::ivec tmp_fireyears(fireyears.n_elem + 1);
+    //
+    arma::uvec include_fires = arma::find(fireyears <= the_year);
+    arma::ivec tmp_fireyears(include_fires.n_elem + 1);
     tmp_fireyears(0) = -1;
-    for (unsigned int i = 0; i < fireyears.n_elem; ++i) {
-      tmp_fireyears(i+1) = fireyears(i);
+
+    if (include_fires.n_elem > 0) {
+      tmp_fireyears(arma::span(1, include_fires.n_elem)) = fireyears(include_fires);
     }
 
     // Account for left-censoring.
@@ -88,15 +97,18 @@ arma::ivec do_cell_fire_status(const arma::ivec& fireyears,
 
     int FireFrequency = query_fireyears.n_elem;
 
+    // FIXME: the left-censoring adjustment above (line 87) means that
+    // fire frequency will be never be seen as zero
     int TSF = FireFrequency > 0 ? (the_year - query_fireyears.max()) : (the_year - base_year + 1);
 
     // --- Decision steps begin ---
     //
     if (min_threshold == 9999 && max_threshold == 9999) {
-      // Cell with veg that should not be burnt
+      // Flag values indicating a cell with veg that should not be burnt
       fStatus = FireFrequency > 0 ? FireStatus::TooFrequentlyBurnt : FireStatus::Vulnerable;
 
     } else if(max_threshold == 0 && min_threshold == 0) {
+      // Flag values indicating that no fire regime is defined for the veg
       fStatus = FireStatus::NoFireRegime;
 
     } else if (FireFrequency == 0) {

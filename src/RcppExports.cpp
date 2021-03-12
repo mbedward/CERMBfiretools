@@ -7,7 +7,7 @@
 using namespace Rcpp;
 
 // do_cell_fire_status
-arma::ivec do_cell_fire_status(const arma::ivec& fireyears, const int min_threshold, const int max_threshold, const arma::ivec& query_years, const int base_year, const bool quiet);
+arma::irowvec do_cell_fire_status(const arma::ivec& fireyears, const int min_threshold, const int max_threshold, const arma::ivec& query_years, const int base_year, const bool quiet);
 RcppExport SEXP _CERMBfiretools_do_cell_fire_status(SEXP fireyearsSEXP, SEXP min_thresholdSEXP, SEXP max_thresholdSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

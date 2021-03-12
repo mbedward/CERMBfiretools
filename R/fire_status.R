@@ -53,6 +53,17 @@ get_fire_status <- function(firehistory,
   firehistory <- firehistory[keep, , drop=FALSE]
 
   thresholds <- as.matrix(thresholds)
+
+  # Replace NA thresholds with flag value 9999
+  namin <- is.na(thresholds[,2])
+  namax <- is.na(thresholds[,3])
+  if (!all(namin == namax)) {
+    stop("One or more records have NA for one but not both thresholds")
+  }
+  thresholds[namin, 2] <- 9999
+  thresholds[namax, 3] <- 9999
+
+  # Check no threshold pairs are in the wrong order
   if (!all(veg[,2] %in% thresholds[,1])) {
     stop("One or more veg codes in the veg table are not in the thresholds table")
   }
@@ -64,15 +75,6 @@ get_fire_status <- function(firehistory,
   if (!all(query_years > base_year)) {
     stop("query years must be later than the specified base year")
   }
-
-  # Replace NA thresholds with flag value 9999
-  namin <- is.na(thresholds[,2])
-  namax <- is.na(thresholds[,3])
-  if (!all(namin == namax)) {
-    stop("One or more records have NA for one but not both thresholds")
-  }
-  thresholds[namin, 2] <- 9999
-  thresholds[namax, 3] <- 9999
 
   # Call Rcpp function and return the resulting matrix
   table_fire_status(firehistory, veg, thresholds, query_years, base_year)
