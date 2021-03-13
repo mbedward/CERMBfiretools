@@ -1,7 +1,7 @@
 # CERMBfiretools
 
 An R package to perform a small subset of the vegetation and fire interval threshold analyses implemented in the larger
-[FireToolsR](https://github.com/ozjimbob/FireTools2R) package, written by Grant Williamson. The
+[FireToolsR](https://github.com/ozjimbob/FireTools2R) package, written by Grant Williamson, University of Tasmania. The
 FireToolsR package is designed for use by land management agencies in a cloud-based services, and standardizes 
 the types and formats of input data and spatial layers. In constrast, this package leaves
 pre-processing and data extraction to the user, with the aim of making it easier to include in a variety
