@@ -16,15 +16,32 @@
 #' @param query_years One or more reference years for which to report fire
 #'   status.
 #'
-#' @param base_year The earliest year covered by the provided fire history. This
-#'   can be earlier than any actual fire years specified for locations.
+#' @param base_year Default start year of the data period. If no fires have
+#'   occurred, and \code{estimate_base_tsf == TRUE} a time since fire value for
+#'   the query year is set by assuming that a fire occurred N years before the
+#'   base_year, where N is the mid-point of the vegetation's tolerable fire
+#'   interval. If fires have occurred, but only after the base year, then we
+#'   assume an earlier fire based on the same mid-point calculation. This only
+#'   applies if the minimum and maximum threshold values are not 0 (no fire
+#'   regime) or 9999 (vegetation that should not be burnt.)
+#'
+#' @param estimate_base_tsf If \code{TRUE} and no fire years are earlier than
+#'   \code{base_year}, a pre-base year fire date is assumed based on the
+#'   mid-point of interval thresholds (see above). This only applies if
+#'   the minimum and maximum threshold values are not 0 (no fire regime) or
+#'   9999 (vegetation that should not be burnt.)
+#'
+#' @return A matrix where the first column is location ID, and subsequent
+#'   columns are fire status for each query year.
 #'
 #' @export
 #'
 get_fire_status <- function(firehistory,
                             veg,
                             thresholds,
-                            query_years, base_year) {
+                            query_years,
+                            base_year,
+                            estimate_base_tsf) {
 
   veg <- as.matrix(veg)
   nv <- nrow(veg)
@@ -76,6 +93,17 @@ get_fire_status <- function(firehistory,
     stop("query years must be later than the specified base year")
   }
 
-  # Call Rcpp function and return the resulting matrix
-  table_fire_status(firehistory, veg, thresholds, query_years, base_year)
+  # Call Rcpp function
+  res <- table_fire_status(firehistory,
+                           veg,
+                           thresholds,
+                           query_years,
+                           base_year,
+                           estimate_base_tsf,
+                           quiet = TRUE)
+
+  colnames(res)[1] <- "location.id"
+  colnames(res)[2:ncol(res)] <- sprintf("status_%d", query_years)
+
+  res
 }

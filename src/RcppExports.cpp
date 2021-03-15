@@ -7,8 +7,8 @@
 using namespace Rcpp;
 
 // do_cell_fire_status
-arma::irowvec do_cell_fire_status(const arma::ivec& fireyears, const int min_threshold, const int max_threshold, const arma::ivec& query_years, const int base_year, const bool quiet);
-RcppExport SEXP _CERMBfiretools_do_cell_fire_status(SEXP fireyearsSEXP, SEXP min_thresholdSEXP, SEXP max_thresholdSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP quietSEXP) {
+arma::irowvec do_cell_fire_status(const arma::ivec& fireyears, const int min_threshold, const int max_threshold, const arma::ivec& query_years, const int base_year, const bool estimate_base_tsf, const bool quiet);
+RcppExport SEXP _CERMBfiretools_do_cell_fire_status(SEXP fireyearsSEXP, SEXP min_thresholdSEXP, SEXP max_thresholdSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP estimate_base_tsfSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -17,31 +17,33 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type max_threshold(max_thresholdSEXP);
     Rcpp::traits::input_parameter< const arma::ivec& >::type query_years(query_yearsSEXP);
     Rcpp::traits::input_parameter< const int >::type base_year(base_yearSEXP);
+    Rcpp::traits::input_parameter< const bool >::type estimate_base_tsf(estimate_base_tsfSEXP);
     Rcpp::traits::input_parameter< const bool >::type quiet(quietSEXP);
-    rcpp_result_gen = Rcpp::wrap(do_cell_fire_status(fireyears, min_threshold, max_threshold, query_years, base_year, quiet));
+    rcpp_result_gen = Rcpp::wrap(do_cell_fire_status(fireyears, min_threshold, max_threshold, query_years, base_year, estimate_base_tsf, quiet));
     return rcpp_result_gen;
 END_RCPP
 }
 // table_fire_status
-arma::imat table_fire_status(arma::imat firehistory, arma::imat veg, arma::imat veg_thresholds, arma::ivec query_years, int base_year, bool quiet);
-RcppExport SEXP _CERMBfiretools_table_fire_status(SEXP firehistorySEXP, SEXP vegSEXP, SEXP veg_thresholdsSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP quietSEXP) {
+arma::imat table_fire_status(const arma::imat& firehistory, const arma::imat& veg, const arma::imat& veg_thresholds, const arma::ivec& query_years, const int base_year, const bool estimate_base_tsf, const bool quiet);
+RcppExport SEXP _CERMBfiretools_table_fire_status(SEXP firehistorySEXP, SEXP vegSEXP, SEXP veg_thresholdsSEXP, SEXP query_yearsSEXP, SEXP base_yearSEXP, SEXP estimate_base_tsfSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::imat >::type firehistory(firehistorySEXP);
-    Rcpp::traits::input_parameter< arma::imat >::type veg(vegSEXP);
-    Rcpp::traits::input_parameter< arma::imat >::type veg_thresholds(veg_thresholdsSEXP);
-    Rcpp::traits::input_parameter< arma::ivec >::type query_years(query_yearsSEXP);
-    Rcpp::traits::input_parameter< int >::type base_year(base_yearSEXP);
-    Rcpp::traits::input_parameter< bool >::type quiet(quietSEXP);
-    rcpp_result_gen = Rcpp::wrap(table_fire_status(firehistory, veg, veg_thresholds, query_years, base_year, quiet));
+    Rcpp::traits::input_parameter< const arma::imat& >::type firehistory(firehistorySEXP);
+    Rcpp::traits::input_parameter< const arma::imat& >::type veg(vegSEXP);
+    Rcpp::traits::input_parameter< const arma::imat& >::type veg_thresholds(veg_thresholdsSEXP);
+    Rcpp::traits::input_parameter< const arma::ivec& >::type query_years(query_yearsSEXP);
+    Rcpp::traits::input_parameter< const int >::type base_year(base_yearSEXP);
+    Rcpp::traits::input_parameter< const bool >::type estimate_base_tsf(estimate_base_tsfSEXP);
+    Rcpp::traits::input_parameter< const bool >::type quiet(quietSEXP);
+    rcpp_result_gen = Rcpp::wrap(table_fire_status(firehistory, veg, veg_thresholds, query_years, base_year, estimate_base_tsf, quiet));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_CERMBfiretools_do_cell_fire_status", (DL_FUNC) &_CERMBfiretools_do_cell_fire_status, 6},
-    {"_CERMBfiretools_table_fire_status", (DL_FUNC) &_CERMBfiretools_table_fire_status, 6},
+    {"_CERMBfiretools_do_cell_fire_status", (DL_FUNC) &_CERMBfiretools_do_cell_fire_status, 7},
+    {"_CERMBfiretools_table_fire_status", (DL_FUNC) &_CERMBfiretools_table_fire_status, 7},
     {NULL, NULL, 0}
 };
 

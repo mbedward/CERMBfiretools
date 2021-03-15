@@ -34,11 +34,19 @@ enum class FireStatus {
 //   fire status.
 //
 // @param base_year Default start year of the data period. If no fires have
-//   occurred, a time since fire value for the query year is set by
-//   assuming that a fire occurred N years before the base_year, where
-//   N is the mid-point of the vegetation's tolerable fire interval. If
-//   fires have occurred, but only after the base year, then we assume
-//   an earlier fire based on the same mid-point calculation.
+//   occurred, and \code{estimate_base_tsf == true} a time since fire value for
+//   the query year is set by assuming that a fire occurred N years before the
+//   base_year, where N is the mid-point of the vegetation's tolerable fire
+//   interval. If fires have occurred, but only after the base year, then we
+//   assume an earlier fire based on the same mid-point calculation. This only
+//   applies if the minimum and maximum threshold values are not 0 (no fire
+//   regime) or 9999 (vegetation that should not be burnt.)
+//
+// @param estimate_base_tsf If \code{true} and no fire years are earlier than
+//   \code{base_year}, a pre-base year fire date is assumed based on the
+//   mid-point of interval thresholds (see above). This only applies if
+//   the minimum and maximum threshold values are not 0 (no fire regime) or
+//   9999 (vegetation that should not be burnt.)
 //
 // @param quiet If true (default) do not print debugging output.
 //
@@ -50,6 +58,7 @@ arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
                                   const int max_threshold,
                                   const arma::ivec& query_years,
                                   const int base_year,
+                                  const bool estimate_base_tsf,
                                   const bool quiet = true) {
 
   enum class IntervalStatus {
@@ -61,107 +70,120 @@ arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
 
   arma::irowvec rtn_status(query_years.n_elem, arma::fill::zeros);
 
-  for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
-    int the_year = query_years(iyear);
+  // --- Short-cuts for special cases
+  FireStatus special_status = FireStatus::UNDEFINED;
 
-    FireStatus fStatus = FireStatus::UNDEFINED;
-    IntervalStatus iStatus = IntervalStatus::UNDEFINED;
+  if (max_threshold == 0 && min_threshold == 0) {
+    // Flag values for no fire regime defined
+    special_status = FireStatus::NoFireRegime;
 
-    // Vector for query fireyears - allow space for an additional
-    // year that might be added (below) before the base year
+  } else if (min_threshold == 9999 && max_threshold == 9999) {
+    // Flag values indicating a cell with veg that should not be burnt
+    special_status = (fireyears.n_elem > 0) ? FireStatus::TooFrequentlyBurnt : FireStatus::Vulnerable;
+  }
+
+  if (special_status != FireStatus::UNDEFINED) {
+    rtn_status.fill(static_cast<int>(special_status));
+
+  } else {
+    // --- General cases
     //
-    arma::uvec include_fires = arma::find(fireyears <= the_year);
-    arma::ivec tmp_fireyears(include_fires.n_elem + 1);
-    tmp_fireyears(0) = -1;
+    for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
+      int the_year = query_years(iyear);
 
-    if (include_fires.n_elem > 0) {
-      tmp_fireyears(arma::span(1, include_fires.n_elem)) = fireyears(include_fires);
-    }
+      FireStatus fStatus = FireStatus::UNDEFINED;
+      IntervalStatus iStatus = IntervalStatus::UNDEFINED;
 
-    // Account for left-censoring.
-    // Note: this step is extra to the FireTools logic
-    //
-    bool leading_year = false;
-    if (fireyears.n_elem == 0 || fireyears.min() > base_year) {
-      int adj = (max_threshold - min_threshold) / 2;
-      tmp_fireyears(0) = std::max(0, base_year - adj);
-      leading_year = true;
-    }
+      // Vector for query fireyears - allow space for an additional
+      // year that might be added (below) before the base year
+      //
+      arma::uvec include_fires = arma::find(fireyears <= the_year);
+      arma::ivec tmp_fireyears(include_fires.n_elem + 1);
+      tmp_fireyears(0) = -1;
 
-    // Subset to unique fire years in ascending order
-    unsigned int ntmp = tmp_fireyears.n_elem;
-    if (!leading_year) ntmp -= 1;
-    arma::ivec query_fireyears = arma::unique( tmp_fireyears.tail(ntmp) );
-
-    if (!quiet) Rcout << "fire years: " << query_fireyears << "\n";
-
-    int FireFrequency = query_fireyears.n_elem;
-
-    // FIXME: the left-censoring adjustment above (line 87) means that
-    // fire frequency will be never be seen as zero
-    int TSF = FireFrequency > 0 ? (the_year - query_fireyears.max()) : (the_year - base_year + 1);
-
-    // --- Decision steps begin ---
-    //
-    if (min_threshold == 9999 && max_threshold == 9999) {
-      // Flag values indicating a cell with veg that should not be burnt
-      fStatus = FireFrequency > 0 ? FireStatus::TooFrequentlyBurnt : FireStatus::Vulnerable;
-
-    } else if(max_threshold == 0 && min_threshold == 0) {
-      // Flag values indicating that no fire regime is defined for the veg
-      fStatus = FireStatus::NoFireRegime;
-
-    } else if (FireFrequency == 0) {
-      fStatus = TSF > max_threshold ? FireStatus::LongUnburnt : FireStatus::Unknown;
-
-    } else {
-      // None of the special cases above applied, so we do the
-      // interval analysis
-      arma::ivec intervals = arma::diff(query_fireyears);
-
-      iStatus = IntervalStatus::WithinThreshold;
-
-      if (!quiet) Rcout << "Assessing intervals: \n";
-
-      for(unsigned int i_intv = 0; i_intv < intervals.n_elem; ++i_intv) {
-        int the_interval = intervals(i_intv);
-
-        if (the_interval < min_threshold) {
-          if (iStatus == IntervalStatus::WithinThreshold) {
-            iStatus = IntervalStatus::Vulnerable;
-          } else {
-            iStatus = IntervalStatus::TooFrequent;
-          }
-        } else if (the_interval > 2 * min_threshold) {
-          iStatus = IntervalStatus::WithinThreshold;
-
-        } else if(iStatus == IntervalStatus::WithinThreshold || iStatus == IntervalStatus::Vulnerable) {
-          iStatus = IntervalStatus::WithinThreshold;
-        }
-
-        if (!quiet) Rcout << "  " << the_interval << "yr status=" << static_cast<int>(iStatus) << "\n";
+      if (include_fires.n_elem > 0) {
+        tmp_fireyears(arma::span(1, include_fires.n_elem)) = fireyears(include_fires);
       }
 
-      if (iStatus == IntervalStatus::TooFrequent) {
-        fStatus = TSF > 2 * min_threshold ?
-          FireStatus::WithinThreshold : FireStatus::TooFrequentlyBurnt;
+      // Account for left-censoring if requested.
+      // Note: this step is extra to the FireTools logic
+      //
+      bool leading_year = false;
+      if (estimate_base_tsf &&
+          (fireyears.n_elem == 0 || fireyears.min() > base_year) ) {
+        int adj = (max_threshold - min_threshold) / 2;
+        tmp_fireyears(0) = std::max(0, base_year - adj);
+        leading_year = true;
+      }
 
-      } else if (TSF < min_threshold) {
-        fStatus = FireStatus::Vulnerable;
+      // Subset to unique fire years in ascending order
+      unsigned int ntmp = tmp_fireyears.n_elem;
+      if (!leading_year) ntmp -= 1;
+      arma::ivec query_fireyears = arma::unique( tmp_fireyears.tail(ntmp) );
 
-      } else if (TSF > max_threshold) {
-        fStatus = FireStatus::LongUnburnt;
+      if (!quiet) Rcout << "fire years: " << query_fireyears << "\n";
+
+      int FireFrequency = query_fireyears.n_elem;
+
+      // Note: fire frequency will always be >= 1 if `estimate_base_tsf` is true
+      // because a leading pre-base year will have been inserted above.
+      int TSF = (FireFrequency > 0) ?
+        (the_year - query_fireyears.max()) : (the_year - base_year + 1);
+
+      // --- Decision steps begin ---
+      //
+      if (FireFrequency == 0) {
+        fStatus = TSF > max_threshold ? FireStatus::LongUnburnt : FireStatus::Unknown;
 
       } else {
-        fStatus = FireStatus::WithinThreshold;
+        // Examine fire intervals
+        //
+        arma::ivec intervals = arma::diff(query_fireyears);
+
+        iStatus = IntervalStatus::WithinThreshold;
+
+        if (!quiet) Rcout << "Assessing intervals: \n";
+
+        for(unsigned int i_intv = 0; i_intv < intervals.n_elem; ++i_intv) {
+          int the_interval = intervals(i_intv);
+
+          if (the_interval < min_threshold) {
+            if (iStatus == IntervalStatus::WithinThreshold) {
+              iStatus = IntervalStatus::Vulnerable;
+            } else {
+              iStatus = IntervalStatus::TooFrequent;
+            }
+          } else if (the_interval > 2 * min_threshold) {
+            iStatus = IntervalStatus::WithinThreshold;
+
+          } else if(iStatus == IntervalStatus::WithinThreshold || iStatus == IntervalStatus::Vulnerable) {
+            iStatus = IntervalStatus::WithinThreshold;
+          }
+
+          if (!quiet) Rcout << "  " << the_interval << "yr status=" << static_cast<int>(iStatus) << "\n";
+        }
+
+        if (iStatus == IntervalStatus::TooFrequent) {
+          fStatus = TSF > 2 * min_threshold ?
+          FireStatus::WithinThreshold : FireStatus::TooFrequentlyBurnt;
+
+        } else if (TSF < min_threshold) {
+          fStatus = FireStatus::Vulnerable;
+
+        } else if (TSF > max_threshold) {
+          fStatus = FireStatus::LongUnburnt;
+
+        } else {
+          fStatus = FireStatus::WithinThreshold;
+        }
       }
-    }
 
-    if ( fStatus == FireStatus::UNDEFINED ) {
-      fStatus = FireStatus::Unknown;
-    }
+      if ( fStatus == FireStatus::UNDEFINED ) {
+        fStatus = FireStatus::Unknown;
+      }
 
-    rtn_status(iyear) = static_cast<int>(fStatus);
+      rtn_status(iyear) = static_cast<int>(fStatus);
+    }
   }
 
   return rtn_status;
@@ -170,13 +192,51 @@ arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
 
 // Determine fire status for a set of locations
 //
+// This function takes fire history and vegetation data for a set of locations
+// and calls do_cell_fire_status for each location in turn.
+//
+// @param firehistory A matrix or data frame with two columns: integer
+//   location ID (e.g. raster cell number); and integer fire year.
+//
+// @param veg A matrix or data frame with two columns: integer location ID
+//   (e.g. raster cell number); and integer vegetation type code. There must
+//   only be one row for each location ID.
+//
+// @param thresholds A matrix or data frame with three columns: integer veg
+//   code; minimum tolerable interval (years); maximum tolerable interval
+//   (years). Setting both the minimum and maximum values to zero indicates that
+//   the vegetation type has no fire regime defined. Setting both values to
+//   \code{NA} indicates that the vegetation type should never be burnt.
+//
+// @param query_years One or more reference years for which to report
+//   fire status.
+//
+// @param base_year Default start year of the data period. If no fires have
+//   occurred, and \code{estimate_base_tsf == true} a time since fire value for
+//   the query year is set by assuming that a fire occurred N years before the
+//   base_year, where N is the mid-point of the vegetation's tolerable fire
+//   interval. If fires have occurred, but only after the base year, then we
+//   assume an earlier fire based on the same mid-point calculation. This only
+//   applies if the minimum and maximum threshold values are not 0 (no fire
+//   regime) or 9999 (vegetation that should not be burnt.)
+//
+// @param estimate_base_tsf If \code{true} and no fire years are earlier than
+//   \code{base_year}, a pre-base year fire date is assumed based on the
+//   mid-point of interval thresholds (see above). This only applies if
+//   the minimum and maximum threshold values are not 0 (no fire regime) or
+//   9999 (vegetation that should not be burnt.)
+//
+// @param quiet If true (default) do not print debugging output.
+//
+// @return
 // [[Rcpp::export]]
-arma::imat table_fire_status(arma::imat firehistory,
-                             arma::imat veg,
-                             arma::imat veg_thresholds,
-                             arma::ivec query_years,
-                             int base_year,
-                             bool quiet = true) {
+arma::imat table_fire_status(const arma::imat& firehistory,
+                             const arma::imat& veg,
+                             const arma::imat& veg_thresholds,
+                             const arma::ivec& query_years,
+                             const int base_year,
+                             const bool estimate_base_tsf,
+                             const bool quiet = true) {
 
   arma::ivec cells = arma::unique( veg.col(0) );
 

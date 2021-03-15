@@ -4,7 +4,14 @@
 \alias{get_fire_status}
 \title{Fire interval threshold analysis for one or more point locations or raster cells}
 \usage{
-get_fire_status(firehistory, veg, thresholds, query_years, base_year)
+get_fire_status(
+  firehistory,
+  veg,
+  thresholds,
+  query_years,
+  base_year,
+  estimate_base_tsf
+)
 }
 \arguments{
 \item{firehistory}{A matrix or data frame with two columns: integer
@@ -23,8 +30,24 @@ the vegetation type has no fire regime defined. Setting both values to
 \item{query_years}{One or more reference years for which to report fire
 status.}
 
-\item{base_year}{The earliest year covered by the provided fire history. This
-can be earlier than any actual fire years specified for locations.}
+\item{base_year}{Default start year of the data period. If no fires have
+occurred, and \code{estimate_base_tsf == TRUE} a time since fire value for
+the query year is set by assuming that a fire occurred N years before the
+base_year, where N is the mid-point of the vegetation's tolerable fire
+interval. If fires have occurred, but only after the base year, then we
+assume an earlier fire based on the same mid-point calculation. This only
+applies if the minimum and maximum threshold values are not 0 (no fire
+regime) or 9999 (vegetation that should not be burnt.)}
+
+\item{estimate_base_tsf}{If \code{TRUE} and no fire years are earlier than
+\code{base_year}, a pre-base year fire date is assumed based on the
+mid-point of interval thresholds (see above). This only applies if
+the minimum and maximum threshold values are not 0 (no fire regime) or
+9999 (vegetation that should not be burnt.)}
+}
+\value{
+A matrix where the first column is location ID, and subsequent
+  columns are fire status for each query year.
 }
 \description{
 Fire interval threshold analysis for one or more point locations or raster cells
