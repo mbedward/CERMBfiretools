@@ -71,7 +71,8 @@ get_fire_status <- function(firehistory,
 
   thresholds <- as.matrix(thresholds)
 
-  # Replace NA thresholds with flag value 9999
+  # Replace NA thresholds with flag value 9999 indicating that vegetation
+  # that should never be burnt
   namin <- is.na(thresholds[,2])
   namax <- is.na(thresholds[,3])
   if (!all(namin == namax)) {
@@ -102,8 +103,7 @@ get_fire_status <- function(firehistory,
                            estimate_base_tsf,
                            quiet = TRUE)
 
-  colnames(res)[1] <- "location.id"
-  colnames(res)[2:ncol(res)] <- sprintf("status_%d", query_years)
+  colnames(res) <- c("location.id", sprintf("status_%d", query_years))
 
   res
 }
