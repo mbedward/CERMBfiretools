@@ -70,120 +70,104 @@ arma::irowvec do_cell_fire_status(const arma::ivec& fireyears,
 
   arma::irowvec rtn_status(query_years.n_elem, arma::fill::zeros);
 
-  // --- Short-cuts for special cases
-  FireStatus special_status = FireStatus::UNDEFINED;
+  for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
+    int the_year = query_years(iyear);
 
-  if (max_threshold == 0 && min_threshold == 0) {
-    // Flag values for no fire regime defined
-    special_status = FireStatus::NoFireRegime;
+    FireStatus fStatus = FireStatus::UNDEFINED;
+    IntervalStatus iStatus = IntervalStatus::UNDEFINED;
 
-  } else if (min_threshold == 9999 && max_threshold == 9999) {
-    // Flag values indicating a cell with veg that should not be burnt
-    special_status = (fireyears.n_elem > 0) ? FireStatus::TooFrequentlyBurnt : FireStatus::Vulnerable;
-  }
+    if (max_threshold == 0 && min_threshold == 0) {
+      // Flag values for no fire regime defined
+      fStatus = FireStatus::NoFireRegime;
 
-  if (special_status != FireStatus::UNDEFINED) {
-    rtn_status.fill(static_cast<int>(special_status));
-
-  } else {
-    // --- General cases
-    //
-    for (unsigned int iyear = 0; iyear < query_years.n_elem; ++iyear) {
-      int the_year = query_years(iyear);
-
-      FireStatus fStatus = FireStatus::UNDEFINED;
-      IntervalStatus iStatus = IntervalStatus::UNDEFINED;
-
+    } else {
       // Vector for query fireyears - allow space for an additional
       // year that might be added (below) before the base year
       //
       arma::uvec include_fires = arma::find(fireyears <= the_year);
-      arma::ivec tmp_fireyears(include_fires.n_elem + 1);
-      tmp_fireyears(0) = -1;
-
-      if (include_fires.n_elem > 0) {
-        tmp_fireyears(arma::span(1, include_fires.n_elem)) = fireyears(include_fires);
-      }
-
-      // Account for left-censoring if requested.
-      // Note: this step is extra to the FireTools logic
-      //
-      bool leading_year = false;
-      if (estimate_base_tsf &&
-          (fireyears.n_elem == 0 || fireyears.min() > base_year) ) {
-        int adj = (max_threshold - min_threshold) / 2;
-        tmp_fireyears(0) = std::max(0, base_year - adj);
-        leading_year = true;
-      }
+      arma::ivec tmp_fireyears = fireyears(include_fires);
 
       // Subset to unique fire years in ascending order
-      unsigned int ntmp = tmp_fireyears.n_elem;
-      if (!leading_year) ntmp -= 1;
-      arma::ivec query_fireyears = arma::unique( tmp_fireyears.tail(ntmp) );
+      arma::ivec query_fireyears = arma::unique( tmp_fireyears );
 
       if (!quiet) Rcout << "fire years: " << query_fireyears << "\n";
 
       int FireFrequency = query_fireyears.n_elem;
 
-      // Note: fire frequency will always be >= 1 if `estimate_base_tsf` is true
-      // because a leading pre-base year will have been inserted above.
-      int TSF = (FireFrequency > 0) ?
-        (the_year - query_fireyears.max()) : (the_year - base_year + 1);
-
-      // --- Decision steps begin ---
-      //
-      if (FireFrequency == 0) {
-        fStatus = TSF > max_threshold ? FireStatus::LongUnburnt : FireStatus::Unknown;
+      if (min_threshold == 9999 && max_threshold == 9999) {
+        // Flag values indicating a cell with veg that should not be burnt
+        fStatus = (FireFrequency > 0) ? FireStatus::TooFrequentlyBurnt : FireStatus::Vulnerable;
 
       } else {
-        // Examine fire intervals
-        //
-        arma::ivec intervals = arma::diff(query_fireyears);
+        int TSF = the_year - base_year + 1;
 
-        iStatus = IntervalStatus::WithinThreshold;
+        if (FireFrequency > 0) {
+          TSF = the_year - query_fireyears.max();
 
-        if (!quiet) Rcout << "Assessing intervals: \n";
-
-        for(unsigned int i_intv = 0; i_intv < intervals.n_elem; ++i_intv) {
-          int the_interval = intervals(i_intv);
-
-          if (the_interval < min_threshold) {
-            if (iStatus == IntervalStatus::WithinThreshold) {
-              iStatus = IntervalStatus::Vulnerable;
-            } else {
-              iStatus = IntervalStatus::TooFrequent;
-            }
-          } else if (the_interval > 2 * min_threshold) {
-            iStatus = IntervalStatus::WithinThreshold;
-
-          } else if(iStatus == IntervalStatus::WithinThreshold || iStatus == IntervalStatus::Vulnerable) {
-            iStatus = IntervalStatus::WithinThreshold;
-          }
-
-          if (!quiet) Rcout << "  " << the_interval << "yr status=" << static_cast<int>(iStatus) << "\n";
+        } else if (estimate_base_tsf) {
+          // Note: this step is additional to the
+          // NPWS FireTools logic
+          //
+          int adj = (max_threshold - min_threshold) / 2;
+          int fyear0 = std::max(0, base_year - adj);
+          TSF = the_year - fyear0;
         }
 
-        if (iStatus == IntervalStatus::TooFrequent) {
-          fStatus = TSF > 2 * min_threshold ?
-          FireStatus::WithinThreshold : FireStatus::TooFrequentlyBurnt;
-
-        } else if (TSF < min_threshold) {
-          fStatus = FireStatus::Vulnerable;
-
-        } else if (TSF > max_threshold) {
-          fStatus = FireStatus::LongUnburnt;
+        // --- Decision steps begin ---
+        //
+        if (FireFrequency == 0) {
+          fStatus = TSF > max_threshold ? FireStatus::LongUnburnt : FireStatus::Unknown;
 
         } else {
-          fStatus = FireStatus::WithinThreshold;
+          // Examine fire intervals
+          //
+          arma::ivec intervals = arma::diff(query_fireyears);
+
+          iStatus = IntervalStatus::WithinThreshold;
+
+          if (!quiet) Rcout << "Assessing intervals: \n";
+
+          for(unsigned int i_intv = 0; i_intv < intervals.n_elem; ++i_intv) {
+            int the_interval = intervals(i_intv);
+
+            if (the_interval < min_threshold) {
+              if (iStatus == IntervalStatus::WithinThreshold) {
+                iStatus = IntervalStatus::Vulnerable;
+              } else {
+                iStatus = IntervalStatus::TooFrequent;
+              }
+            } else if (the_interval > 2 * min_threshold) {
+              iStatus = IntervalStatus::WithinThreshold;
+
+            } else if(iStatus == IntervalStatus::WithinThreshold || iStatus == IntervalStatus::Vulnerable) {
+              iStatus = IntervalStatus::WithinThreshold;
+            }
+
+            if (!quiet) Rcout << "  " << the_interval << "yr status=" << static_cast<int>(iStatus) << "\n";
+          }
+
+          if (iStatus == IntervalStatus::TooFrequent) {
+            fStatus = TSF > 2 * min_threshold ?
+            FireStatus::WithinThreshold : FireStatus::TooFrequentlyBurnt;
+
+          } else if (TSF < min_threshold) {
+            fStatus = FireStatus::Vulnerable;
+
+          } else if (TSF > max_threshold) {
+            fStatus = FireStatus::LongUnburnt;
+
+          } else {
+            fStatus = FireStatus::WithinThreshold;
+          }
+        }
+
+        if ( fStatus == FireStatus::UNDEFINED ) {
+          fStatus = FireStatus::Unknown;
         }
       }
-
-      if ( fStatus == FireStatus::UNDEFINED ) {
-        fStatus = FireStatus::Unknown;
-      }
-
-      rtn_status(iyear) = static_cast<int>(fStatus);
     }
+
+    rtn_status(iyear) = static_cast<int>(fStatus);
   }
 
   return rtn_status;
